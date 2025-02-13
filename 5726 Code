@@ -1,0 +1,77 @@
+import React, { useState, useEffect } from "react";
+import QRCode from "qrcode.react";
+
+const defaultConfig = {
+  sections: [
+    {
+      name: "Autonomous",
+      fields: [
+        { code: "auto_high", title: "High Goal Scored", type: "number", defaultValue: 0 },
+        { code: "auto_low", title: "Low Goal Scored", type: "number", defaultValue: 0 },
+        { code: "taxi", title: "Taxi?", type: "checkbox", defaultValue: false }
+      ]
+    },
+    {
+      name: "Endgame",
+      fields: [
+        { code: "climb", title: "Climb Level", type: "select", choices: { "none": "None", "low": "Low", "mid": "Mid", "high": "High" }, defaultValue: "none" }
+      ]
+    }
+  ]
+};
+
+export default function ScoutingApp() {
+  const [config] = useState(defaultConfig);
+  const [formData, setFormData] = useState(() => {
+    const savedData = JSON.parse(localStorage.getItem("scoutingData")) || {};
+    return config.sections.reduce((acc, section) => {
+      section.fields.forEach(field => {
+        acc[field.code] = savedData[field.code] ?? field.defaultValue;
+      });
+      return acc;
+    }, {});
+  });
+  const [qrData, setQrData] = useState("");
+
+  useEffect(() => {
+    localStorage.setItem("scoutingData", JSON.stringify(formData));
+  }, [formData]);
+
+  const handleChange = (code, value) => {
+    setFormData(prev => ({ ...prev, [code]: value }));
+  };
+
+  const generateQR = () => {
+    setQrData(JSON.stringify(formData));
+  };
+
+  return (
+    <div className="p-4 space-y-4">
+      {config.sections.map(section => (
+        <div key={section.name} className="border p-4 rounded">
+          <h2 className="font-bold text-lg">{section.name}</h2>
+          {section.fields.map(field => (
+            <div key={field.code} className="mt-2">
+              <label>{field.title}</label>
+              {field.type === "select" && (
+                <select value={formData[field.code]} onChange={e => handleChange(field.code, e.target.value)}>
+                  {Object.entries(field.choices).map(([key, value]) => (
+                    <option key={key} value={key}>{value}</option>
+                  ))}
+                </select>
+              )}
+              {field.type === "checkbox" && (
+                <input type="checkbox" checked={formData[field.code]} onChange={e => handleChange(field.code, e.target.checked)} />
+              )}
+              {field.type === "number" && (
+                <input type="number" value={formData[field.code]} onChange={e => handleChange(field.code, e.target.value)} />
+              )}
+            </div>
+          ))}
+        </div>
+      ))}
+      <button onClick={generateQR}>Generate QR</button>
+      {qrData && <QRCode value={qrData} />}
+    </div>
+  );
+}
